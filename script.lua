@@ -364,12 +364,12 @@ local body = new("ScrollingFrame", {
     ScrollBarImageTransparency = 0.5, ClipsDescendants = true,
 })
 new("UIListLayout", {
-    Parent = body, Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder,
+    Parent = body, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder,
 })
 new("UIPadding", {
     Parent = body,
-    PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12),
-    PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 12),
+    PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10),
+    PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 10),
 })
 
 ------------------------------------------------------------------
@@ -696,11 +696,11 @@ local function addSection(text)
     rowOrder += 1
     local f = new("Frame", {
         Parent = body, LayoutOrder = rowOrder,
-        Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 16), BackgroundTransparency = 1,
     })
     new("TextLabel", {
         Parent = f, BackgroundTransparency = 1,
-        Position = UDim2.new(0, 4, 0, 6), Size = UDim2.new(1, -8, 0, 12),
+        Position = UDim2.new(0, 4, 0, 3), Size = UDim2.new(1, -8, 0, 12),
         Font = Enum.Font.GothamBold, Text = text, TextSize = 10,
         TextColor3 = THEME.Dim, TextXAlignment = Enum.TextXAlignment.Left,
     })
@@ -720,7 +720,7 @@ local function addFeature(opts)
     new("UIListLayout", { Parent = card, SortOrder = Enum.SortOrder.LayoutOrder })
 
     local head = new("Frame", {
-        Parent = card, LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 50),
+        Parent = card, LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 44),
         BackgroundTransparency = 1,
     })
 
@@ -731,26 +731,26 @@ local function addFeature(opts)
     })
 
     local iconBox = new("Frame", {
-        Parent = head, Position = UDim2.new(0, 12, 0.5, -15), Size = UDim2.fromOffset(30, 30),
+        Parent = head, Position = UDim2.new(0, 10, 0.5, -13), Size = UDim2.fromOffset(26, 26),
         BackgroundColor3 = opts.color or THEME.Accent, BackgroundTransparency = 0.87,
         BorderSizePixel = 0,
     })
-    corner(iconBox, 9)
+    corner(iconBox, 8)
     new("TextLabel", {
         Parent = iconBox, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
-        Font = Enum.Font.GothamBold, Text = opts.icon, TextSize = 15, TextColor3 = THEME.Text,
+        Font = Enum.Font.GothamBold, Text = opts.icon, TextSize = 13, TextColor3 = THEME.Text,
     })
 
     new("TextLabel", {
         Parent = head, BackgroundTransparency = 1,
-        Position = UDim2.new(0, 51, 0, 10), Size = UDim2.new(1, -120, 0, 16),
+        Position = UDim2.new(0, 46, 0, 7), Size = UDim2.new(1, -116, 0, 16),
         Font = Enum.Font.GothamBold, Text = opts.title, TextSize = 13,
         TextColor3 = THEME.Text, TextXAlignment = Enum.TextXAlignment.Left,
     })
     new("TextLabel", {
         Parent = head, BackgroundTransparency = 1,
-        Position = UDim2.new(0, 51, 0, 27), Size = UDim2.new(1, -120, 0, 13),
-        Font = Enum.Font.Gotham, Text = opts.desc or "", TextSize = 10.5,
+        Position = UDim2.new(0, 46, 0, 23), Size = UDim2.new(1, -116, 0, 13),
+        Font = Enum.Font.Gotham, Text = opts.desc or "", TextSize = 10,
         TextColor3 = THEME.Dim, TextXAlignment = Enum.TextXAlignment.Left,
         TextTruncate = Enum.TextTruncate.AtEnd,
     })
