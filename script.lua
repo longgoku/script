@@ -37,7 +37,7 @@ local THEME = {
 local ALL_MOBS = "Tất cả quái"
 
 local CONFIG = {
-    YoutubeUrl = "https://www.youtube.com/@donchoigame",
+    YoutubeUrl = nil, -- đã bỏ tính năng này
     MenuKey    = Enum.KeyCode.RightShift,
     EspPlayer  = THEME.Accent,
     EspMob     = THEME.Mob,
@@ -249,6 +249,16 @@ end
 local baseScale = fitScreen()
 uiScale.Scale = baseScale
 
+-- ░░ BÓNG ĐỔ MỀM phía sau khung ░░
+local shadow = new("ImageLabel", {
+    Parent = root, ZIndex = 0, Image = "rbxassetid://5028857084",
+    ImageColor3 = Color3.new(0, 0, 0), ImageTransparency = 0.45,
+    ScaleType = Enum.ScaleType.Slice,
+    SliceCenter = Rect.new(24, 24, 276, 276),
+    Position = UDim2.new(0.5, 0, 0.5, 10), AnchorPoint = Vector2.new(0.5, 0.5),
+    Size = UDim2.new(1, 34, 1, 40), BackgroundTransparency = 1,
+})
+
 -- ░░ HÀO QUANG (glow) phía sau menu ░░
 local glow = new("Frame", {
     Parent = root, ZIndex = 0,
@@ -283,23 +293,28 @@ gradient(header, THEME.Accent, THEME.Card, 0,
         NumberSequenceKeypoint.new(1, 1),
     }))
 
--- thanh accent dọc bên trái tiêu đề
-local accentBar = new("Frame", {
-    Parent = header, Position = UDim2.new(0, 14, 0, 15), Size = UDim2.fromOffset(3, 30),
+-- huy hiệu logo tròn góc trái tiêu đề
+local logo = new("Frame", {
+    Parent = header, Position = UDim2.new(0, 12, 0, 11), Size = UDim2.fromOffset(38, 38),
     BackgroundColor3 = THEME.Accent, BorderSizePixel = 0,
 })
-corner(accentBar, 2)
-gradient(accentBar, THEME.Accent, THEME.Accent2, 90)
+corner(logo, 12)
+gradient(logo, THEME.Accent, THEME.Accent2, 135)
+stroke(logo, Color3.new(1, 1, 1), 1).Transparency = 0.75
+new("TextLabel", {
+    Parent = logo, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
+    Font = Enum.Font.GothamBlack, Text = "L", TextSize = 19, TextColor3 = Color3.new(1, 1, 1),
+})
 
 new("TextLabel", {
     Parent = header, BackgroundTransparency = 1,
-    Position = UDim2.new(0, 26, 0, 13), Size = UDim2.new(1, -110, 0, 20),
+    Position = UDim2.new(0, 58, 0, 13), Size = UDim2.new(1, -142, 0, 20),
     Font = Enum.Font.GothamBold, Text = "Longdzvcl", TextSize = 17,
     TextColor3 = THEME.Text, TextXAlignment = Enum.TextXAlignment.Left,
 })
 new("TextLabel", {
     Parent = header, BackgroundTransparency = 1,
-    Position = UDim2.new(0, 26, 0, 33), Size = UDim2.new(1, -110, 0, 14),
+    Position = UDim2.new(0, 58, 0, 33), Size = UDim2.new(1, -142, 0, 14),
     Font = Enum.Font.Gotham, Text = "by Longdzvcl", TextSize = 11,
     TextColor3 = THEME.Dim, TextXAlignment = Enum.TextXAlignment.Left,
 })
@@ -341,7 +356,7 @@ new("Frame", {
 ------------------------------------------------------------------
 local body = new("ScrollingFrame", {
     Parent = main,
-    Position = UDim2.new(0, 0, 0, 61), Size = UDim2.new(1, 0, 1, -117),
+    Position = UDim2.new(0, 0, 0, 61), Size = UDim2.new(1, 0, 1, -71),
     BackgroundTransparency = 1, BorderSizePixel = 0,
     CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
     ScrollingDirection = Enum.ScrollingDirection.Y,
@@ -356,21 +371,6 @@ new("UIPadding", {
     PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12),
     PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 12),
 })
-
-------------------------------------------------------------------
--- FOOTER : nút Sub to Youtube
-------------------------------------------------------------------
-local ytBtn = new("TextButton", {
-    Parent = main, AutoButtonColor = false,
-    Position = UDim2.new(0, 12, 1, -48), Size = UDim2.new(1, -24, 0, 38),
-    BackgroundColor3 = THEME.Red, BorderSizePixel = 0,
-    Font = Enum.Font.GothamBold, Text = "▶   Sub to Youtube",
-    TextSize = 14, TextColor3 = Color3.new(1, 1, 1),
-})
-corner(ytBtn, 11)
-gradient(ytBtn, Color3.fromRGB(255, 72, 72), Color3.fromRGB(190, 22, 22), 90)
-ytBtn.MouseEnter:Connect(function() tween(ytBtn, 0.15, { TextSize = 15 }) end)
-ytBtn.MouseLeave:Connect(function() tween(ytBtn, 0.15, { TextSize = 14 }) end)
 
 ------------------------------------------------------------------
 -- NÚT TRÒN MỞ MENU (PC + Mobile)
@@ -1141,18 +1141,26 @@ do
         downBtn.Visible = true
 
         flyBV = new("BodyVelocity", {
-            Parent = root, MaxForce = Vector3.new(0, 1e5, 0), Velocity = Vector3.new(),
+            Parent = root, MaxForce = Vector3.new(1e5, 1e5, 1e5), Velocity = Vector3.new(),
         })
 
         flyConn = RunService.Heartbeat:Connect(function()
             if not State.Fly or not root.Parent or not flyBV then return end
+
+            -- hum.MoveDirection là hướng đi mà Roblox đã tự tính sẵn từ input hiện có
+            -- (joystick chạm trên mobile, WASD trên PC, hoặc tay cầm) — dùng thẳng
+            -- cái này thay vì tự đọc phím giúp bay di chuyển được trên mọi thiết bị.
+            local horiz = hum.MoveDirection
+            local horizVel = horiz.Magnitude > 0 and (horiz.Unit * State.FlySpeed) or Vector3.new()
+
             local vy = 0
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) or upHeld then
                 vy = State.FlySpeed
             elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or downHeld then
                 vy = -State.FlySpeed
             end
-            flyBV.Velocity = Vector3.new(0, vy, 0)
+
+            flyBV.Velocity = Vector3.new(horizVel.X, vy, horizVel.Z)
         end)
     end
 end
@@ -1208,9 +1216,10 @@ do
 
         diedConn = hum.Died:Connect(function()
             if not State.God then return end
-            task.defer(function()
-                if hum and hum.Parent then hum.Health = hum.MaxHealth end
-            end)
+            if hum and hum.Parent then
+                pcall(function() hum.Health = hum.MaxHealth end)
+                pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
+            end
         end)
 
         -- lưới an toàn: ép máu mỗi frame, phòng trường hợp thứ gây chết không đi
@@ -1408,11 +1417,6 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == CONFIG.MenuKey then
         setMenuOpen(not State.MenuOpen)
     end
-end)
-
-ytBtn.MouseButton1Click:Connect(function()
-    pcall(function() setclipboard(CONFIG.YoutubeUrl) end)
-    toast("Đã copy link Youtube!", THEME.Red)
 end)
 
 -- đồng hồ FPS
