@@ -294,13 +294,13 @@ gradient(accentBar, THEME.Accent, THEME.Accent2, 90)
 new("TextLabel", {
     Parent = header, BackgroundTransparency = 1,
     Position = UDim2.new(0, 26, 0, 13), Size = UDim2.new(1, -110, 0, 20),
-    Font = Enum.Font.GothamBold, Text = "DonchoigameHub", TextSize = 17,
+    Font = Enum.Font.GothamBold, Text = "Longdzvcl", TextSize = 17,
     TextColor3 = THEME.Text, TextXAlignment = Enum.TextXAlignment.Left,
 })
 new("TextLabel", {
     Parent = header, BackgroundTransparency = 1,
     Position = UDim2.new(0, 26, 0, 33), Size = UDim2.new(1, -110, 0, 14),
-    Font = Enum.Font.Gotham, Text = "by donchoigame", TextSize = 11,
+    Font = Enum.Font.Gotham, Text = "by Longdzvcl", TextSize = 11,
     TextColor3 = THEME.Dim, TextXAlignment = Enum.TextXAlignment.Left,
 })
 
@@ -1052,7 +1052,62 @@ end
 ------------------------------------------------------------------
 local Movement = {}
 do
-    local flyConn, flyBV, flyBG
+    local flyConn, flyBV, upBtn, downBtn, upHeld, downHeld = nil, nil, nil, nil, false, false
+    local enforceConn
+
+    -- Nút bay lên / xuống nổi trên màn hình — bắt buộc phải có vì mobile
+    -- không có phím Space/Shift. Bấm giữ = giữ hướng, thả tay = dừng.
+    local function ensureFlyButtons()
+        if upBtn then return end
+        upBtn = new("TextButton", {
+            Name = "FlyUp", Parent = gui, Visible = false, ZIndex = 50,
+            Size = UDim2.fromOffset(52, 52), Position = UDim2.new(1, -70, 1, -150),
+            BackgroundColor3 = THEME.Accent, AutoButtonColor = true,
+            Font = Enum.Font.GothamBlack, Text = "▲", TextSize = 20, TextColor3 = Color3.new(1, 1, 1),
+        })
+        corner(upBtn, 26)
+        downBtn = new("TextButton", {
+            Name = "FlyDown", Parent = gui, Visible = false, ZIndex = 50,
+            Size = UDim2.fromOffset(52, 52), Position = UDim2.new(1, -70, 1, -86),
+            BackgroundColor3 = THEME.Card2, AutoButtonColor = true,
+            Font = Enum.Font.GothamBlack, Text = "▼", TextSize = 20, TextColor3 = Color3.new(1, 1, 1),
+        })
+        corner(downBtn, 26)
+
+        local function bind(btn, setter)
+            btn.InputBegan:Connect(function(inp)
+                if inp.UserInputType == Enum.UserInputType.Touch
+                    or inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                    setter(true)
+                end
+            end)
+            btn.InputEnded:Connect(function(inp)
+                if inp.UserInputType == Enum.UserInputType.Touch
+                    or inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                    setter(false)
+                end
+            end)
+        end
+        bind(upBtn, function(v) upHeld = v end)
+        bind(downBtn, function(v) downHeld = v end)
+    end
+
+    -- Ép WalkSpeed/JumpPower liên tục mỗi frame: nhiều game simulator tự set lại
+    -- 2 stat này theo nội bộ của họ, nếu chỉ set 1 lần thì bị đè về giá trị gốc ngay lập tức.
+    local function startEnforce()
+        if enforceConn then return end
+        enforceConn = RunService.Heartbeat:Connect(function()
+            local hum = getHum()
+            if not hum then return end
+            if State.Speed and hum.WalkSpeed ~= State.SpeedValue then
+                hum.WalkSpeed = State.SpeedValue
+            end
+            if State.JumpBoost and hum.JumpPower ~= State.JumpValue then
+                hum.JumpPower = State.JumpValue
+            end
+        end)
+    end
+    startEnforce()
 
     function Movement.ApplySpeed(on)
         local hum = getHum()
@@ -1067,39 +1122,37 @@ do
     function Movement.StopFly()
         if flyConn then flyConn:Disconnect(); flyConn = nil end
         if flyBV then flyBV:Destroy(); flyBV = nil end
-        if flyBG then flyBG:Destroy(); flyBG = nil end
-        local hum = getHum()
-        if hum then hum.PlatformStand = false end
+        upHeld, downHeld = false, false
+        if upBtn then upBtn.Visible = false end
+        if downBtn then downBtn.Visible = false end
     end
 
+    -- Fly kiểu "huỷ trọng lực": không PlatformStand nên Humanoid vẫn nhận input
+    -- di chuyển ngang bình thường (bàn phím lẫn joystick chạm trên mobile đều
+    -- chạy qua WalkSpeed như cũ) — script chỉ bù lực để không rơi + cho lên/xuống.
     function Movement.ApplyFly(on)
         local hum, root = getHum(), getRoot()
         if not hum or not root then return end
         Movement.StopFly()
         if not on then return end
 
-        hum.PlatformStand = true
+        ensureFlyButtons()
+        upBtn.Visible = true
+        downBtn.Visible = true
+
         flyBV = new("BodyVelocity", {
-            Parent = root, MaxForce = Vector3.new(1e5, 1e5, 1e5), Velocity = Vector3.new(),
+            Parent = root, MaxForce = Vector3.new(0, 1e5, 0), Velocity = Vector3.new(),
         })
-        flyBG = new("BodyGyro", {
-            Parent = root, MaxTorque = Vector3.new(1e5, 1e5, 1e5), P = 3000, D = 300,
-            CFrame = root.CFrame,
-        })
-        flyConn = RunService.RenderStepped:Connect(function()
+
+        flyConn = RunService.Heartbeat:Connect(function()
             if not State.Fly or not root.Parent or not flyBV then return end
-            local cam = workspace.CurrentCamera
-            if not cam then return end
-            local cf, dir = cam.CFrame, Vector3.new()
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += cf.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= cf.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= cf.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += cf.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0, 1, 0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir -= Vector3.new(0, 1, 0) end
-            if dir.Magnitude > 0 then dir = dir.Unit end
-            flyBV.Velocity = dir * State.FlySpeed
-            flyBG.CFrame = CFrame.new(root.Position, root.Position + cf.LookVector)
+            local vy = 0
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or upHeld then
+                vy = State.FlySpeed
+            elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or downHeld then
+                vy = -State.FlySpeed
+            end
+            flyBV.Velocity = Vector3.new(0, vy, 0)
         end)
     end
 end
@@ -1109,34 +1162,43 @@ end
 ------------------------------------------------------------------
 local God = {}
 do
-    local hpConn, diedConn, stateConn
+    local HUGE_HP = 1e9 -- số lớn hữu hạn, KHÔNG dùng math.huge vì Roblox có thể
+                         -- từ chối/gây lỗi khi gán giá trị vô cực cho property Health,
+                         -- và lỗi đó không hiện log gì khiến God mode coi như không chạy.
+    local hpConn, diedConn, stateConn, enforceConn, hookedHum
 
     local function unhook()
         if hpConn then hpConn:Disconnect(); hpConn = nil end
         if diedConn then diedConn:Disconnect(); diedConn = nil end
         if stateConn then stateConn:Disconnect(); stateConn = nil end
+        if enforceConn then enforceConn:Disconnect(); enforceConn = nil end
+        hookedHum = nil
     end
 
     -- Gắn vào Humanoid hiện tại: khoá máu ở mức tối đa, chặn trạng thái "Dead",
-    -- và nếu health bị set về 0 bởi bất kỳ đòn nào (kể cả sát thương phần trăm / một-đòn-chết)
-    -- thì kéo ngược lại full máu ngay lập tức trong cùng 1 frame.
+    -- và ép máu về full LIÊN TỤC MỖI FRAME (không chỉ chờ event HealthChanged) —
+    -- vì có game gây sát thương liên tiếp nhanh hơn tốc độ event xử lý kịp.
     function God.Hook(hum)
         unhook()
         if not hum then return end
+        hookedHum = hum
 
-        hum.MaxHealth = math.huge
-        hum.Health = math.huge
+        local ok = pcall(function()
+            hum.MaxHealth = HUGE_HP
+            hum.Health = HUGE_HP
+        end)
+        if not ok then
+            pcall(function() hum.MaxHealth = 1e6; hum.Health = 1e6 end)
+        end
         hum.BreakJointsOnDeath = false
         pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false) end)
 
         hpConn = hum.HealthChanged:Connect(function(hp)
-            if not State.God then return end
-            if hp < hum.MaxHealth then
+            if State.God and hp < hum.MaxHealth then
                 hum.Health = hum.MaxHealth
             end
         end)
 
-        -- Phòng trường hợp game ép chuyển state Dead bất chấp SetStateEnabled
         stateConn = hum.StateChanged:Connect(function(_, new)
             if State.God and new == Enum.HumanoidStateType.Dead then
                 hum.Health = hum.MaxHealth
@@ -1149,6 +1211,14 @@ do
             task.defer(function()
                 if hum and hum.Parent then hum.Health = hum.MaxHealth end
             end)
+        end)
+
+        -- lưới an toàn: ép máu mỗi frame, phòng trường hợp thứ gây chết không đi
+        -- qua HealthChanged (ví dụ set thẳng bằng script khác nhanh liên tiếp)
+        enforceConn = RunService.Heartbeat:Connect(function()
+            if State.God and hookedHum and hookedHum.Parent and hookedHum.Health < hookedHum.MaxHealth then
+                hookedHum.Health = hookedHum.MaxHealth
+            end
         end)
     end
 
@@ -1235,7 +1305,7 @@ switches.Speed = addFeature({
     icon = "🏃", title = "Speed", desc = "Tăng tốc độ chạy",
     onToggle = function(on) State.Speed = on; Movement.ApplySpeed(on) end,
     slider = {
-        min = 16, max = 200, default = State.SpeedValue, label = "Tốc độ",
+        min = 16, max = 999, default = State.SpeedValue, label = "Tốc độ",
         onChanged = function(v) State.SpeedValue = v; if State.Speed then Movement.ApplySpeed(true) end end,
     },
 })
@@ -1244,7 +1314,7 @@ switches.JumpBoost = addFeature({
     icon = "⬆", title = "Jump Boost", desc = "Nhảy cao hơn",
     onToggle = function(on) State.JumpBoost = on; Movement.ApplyJump(on) end,
     slider = {
-        min = 50, max = 300, default = State.JumpValue, label = "Lực nhảy",
+        min = 50, max = 999, default = State.JumpValue, label = "Lực nhảy",
         onChanged = function(v) State.JumpValue = v; if State.JumpBoost then Movement.ApplyJump(true) end end,
     },
 })
@@ -1341,4 +1411,4 @@ LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 if LocalPlayer.Character then onCharacterAdded(LocalPlayer.Character) end
 
 setMenuOpen(State.MenuOpen)
-toast("DonchoigameHub đã tải xong!", THEME.Accent)
+toast("Longdzvcl đã tải xong!", THEME.Accent)
