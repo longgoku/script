@@ -56,7 +56,7 @@ local CONFIG = {
 
 local State = {
     FixLag = false, EspPlayer = false, EspMob = false, Fullbright = false,
-    Speed = false, Fly = false, JumpBoost = false, AutoFarm = false,
+    Speed = false, Fly = false, JumpBoost = false, AutoFarm = false, Noclip = false,
     SpeedValue = 45,      -- WalkSpeed khi bật Speed
     JumpValue  = 90,      -- JumpPower khi bật JumpBoost
     FlySpeed   = 65,      -- tốc độ bay
@@ -1229,6 +1229,36 @@ do
 end
 
 ------------------------------------------------------------------
+-- CHỨC NĂNG: NOCLIP (đi xuyên tường)
+------------------------------------------------------------------
+local Noclip = {}
+do
+    local conn
+
+    -- Tắt CanCollide toàn bộ part của nhân vật, và tự chạy lại mỗi frame
+    -- vì có part mới sinh ra (do tool, animation...) hoặc bị game bật lại CanCollide.
+    function Noclip.Apply()
+        local char = LocalPlayer.Character
+        if not char then return end
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+
+    function Noclip.SetEnabled(on)
+        State.Noclip = on
+        if conn then conn:Disconnect(); conn = nil end
+        if not on then return end
+        Noclip.Apply()
+        conn = RunService.Stepped:Connect(function()
+            if State.Noclip then Noclip.Apply() end
+        end)
+    end
+end
+
+------------------------------------------------------------------
 -- CHỨC NĂNG: AUTO FARM
 ------------------------------------------------------------------
 local AutoFarm = {}
@@ -1329,6 +1359,12 @@ switches.Fly = addFeature({
     },
 })
 
+switches.Noclip = addFeature({
+    icon = "🚪", title = "Noclip", desc = "Đi xuyên tường/vật cản",
+    color = THEME.Accent2,
+    onToggle = function(on) Noclip.SetEnabled(on) end,
+})
+
 addSection("CHIẾN ĐẤU")
 
 switches.God = addFeature({
@@ -1405,6 +1441,7 @@ local function onCharacterAdded(char)
     if State.JumpBoost then Movement.ApplyJump(true) end
     if State.Fly then Movement.ApplyFly(true) end
     if State.God then God.Hook(hum) end
+    if State.Noclip then Noclip.SetEnabled(true) end
 end
 
 LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
